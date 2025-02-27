@@ -1,0 +1,3 @@
+@echo off
+set OPENAI_API_KEY=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
+python app.py

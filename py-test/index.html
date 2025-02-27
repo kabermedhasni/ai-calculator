@@ -1,0 +1,557 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AI Calculator</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+        font-family: Arial, sans-serif;
+      }
+
+      body {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        min-height: 100vh;
+        background: #f0f2f5;
+      }
+
+      .calculator {
+        background: #fff;
+        border-radius: 20px;
+        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        padding: 20px;
+        width: 400px;
+      }
+
+      .display {
+        background: #f8f9fa;
+        border-radius: 10px;
+        padding: 20px;
+        margin-bottom: 20px;
+      }
+
+      .history {
+        font-size: 14px;
+        color: #6c757d;
+        min-height: 20px;
+        margin-bottom: 5px;
+      }
+
+      .current {
+        font-size: 36px;
+        text-align: right;
+        color: #212529;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      .buttons {
+        display: grid;
+        grid-template-columns: repeat(5, 1fr);
+        gap: 10px;
+      }
+
+      button {
+        border: none;
+        background: #e9ecef;
+        color: #212529;
+        padding: 15px;
+        font-size: 18px;
+        border-radius: 10px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+      }
+
+      button:hover {
+        background: #dee2e6;
+      }
+
+      .operator {
+        background: #4dabf7;
+        color: white;
+      }
+
+      .operator:hover {
+        background: #339af0;
+      }
+
+      .memory {
+        background: #ffd43b;
+      }
+
+      .memory:hover {
+        background: #fcc419;
+      }
+
+      .equals {
+        background: #40c057;
+        color: white;
+      }
+
+      .equals:hover {
+        background: #37b24d;
+      }
+
+      .clear {
+        background: #ff6b6b;
+        color: white;
+      }
+
+      .clear:hover {
+        background: #fa5252;
+      }
+
+      .function {
+        background: #845ef7;
+        color: white;
+      }
+
+      .function:hover {
+        background: #7950f2;
+      }
+
+      #historyPanel {
+        position: fixed;
+        right: -300px;
+        top: 0;
+        width: 300px;
+        height: 100%;
+        background: white;
+        box-shadow: -5px 0 15px rgba(0, 0, 0, 0.1);
+        padding: 20px;
+        transition: right 0.3s ease;
+        overflow-y: auto;
+      }
+
+      #historyPanel.active {
+        right: 0;
+      }
+
+      .history-entry {
+        padding: 10px;
+        border-bottom: 1px solid #dee2e6;
+      }
+
+      .history-entry:last-child {
+        border-bottom: none;
+      }
+
+      .suggestion {
+        font-size: 14px;
+        color: #6c757d;
+        padding: 10px;
+        background: #f8f9fa;
+        border-radius: 5px;
+        margin-top: 10px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+      }
+
+      .suggestion:hover {
+        background: #e9ecef;
+      }
+
+      .voice-input {
+        position: fixed;
+        bottom: 20px;
+        left: 50%;
+        transform: translateX(-50%);
+        padding: 15px 30px;
+        background: #845ef7;
+        color: white;
+        border: none;
+        border-radius: 25px;
+        cursor: pointer;
+        font-size: 16px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+
+      .voice-input:hover {
+        background: #7048e8;
+      }
+
+      .voice-input.recording {
+        background: #fa5252;
+        animation: pulse 1.5s infinite;
+      }
+
+      @keyframes pulse {
+        0% {
+          transform: translateX(-50%) scale(1);
+        }
+        50% {
+          transform: translateX(-50%) scale(1.05);
+        }
+        100% {
+          transform: translateX(-50%) scale(1);
+        }
+      }
+
+      .natural-language-input {
+        width: 100%;
+        padding: 10px;
+        margin-bottom: 10px;
+        border: 1px solid #dee2e6;
+        border-radius: 5px;
+        font-size: 16px;
+      }
+
+      .ai-features {
+        margin-top: 20px;
+        padding-top: 20px;
+        border-top: 1px solid #dee2e6;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="calculator">
+      <input
+        type="text"
+        class="natural-language-input"
+        placeholder="Type a math question (e.g., 'what is the square root of 16?')"
+        id="naturalInput"
+        onkeypress="handleNaturalLanguage(event)"
+      />
+
+      <div class="display">
+        <div class="history" id="history"></div>
+        <div class="current" id="current">0</div>
+        <div
+          class="suggestion"
+          id="suggestion"
+          onclick="applySuggestion()"
+          style="display: none"
+        ></div>
+      </div>
+      <div class="buttons">
+        <!-- Basic Operations -->
+        <button class="memory" onclick="handleMemory('MR')">MR</button>
+        <button class="memory" onclick="handleMemory('M+')">M+</button>
+        <button class="memory" onclick="handleMemory('M-')">M-</button>
+        <button class="memory" onclick="handleMemory('MC')">MC</button>
+        <button class="function" onclick="toggleHistory()">History</button>
+
+        <button class="function" onclick="handleFunction('sin')">sin</button>
+        <button class="function" onclick="handleFunction('cos')">cos</button>
+        <button class="function" onclick="handleFunction('tan')">tan</button>
+        <button class="function" onclick="handleFunction('√')">√</button>
+        <button class="function" onclick="handleFunction('log')">log</button>
+
+        <button onclick="appendNumber(7)">7</button>
+        <button onclick="appendNumber(8)">8</button>
+        <button onclick="appendNumber(9)">9</button>
+        <button class="operator" onclick="handleOperator('/')">/</button>
+        <button class="function" onclick="handleFunction('ln')">ln</button>
+
+        <button onclick="appendNumber(4)">4</button>
+        <button onclick="appendNumber(5)">5</button>
+        <button onclick="appendNumber(6)">6</button>
+        <button class="operator" onclick="handleOperator('*')">×</button>
+        <button class="function" onclick="handleFunction('x!')">x!</button>
+
+        <button onclick="appendNumber(1)">1</button>
+        <button onclick="appendNumber(2)">2</button>
+        <button onclick="appendNumber(3)">3</button>
+        <button class="operator" onclick="handleOperator('-')">-</button>
+        <button class="function" onclick="handleFunction('x^y')">x^y</button>
+
+        <button onclick="appendNumber(0)">0</button>
+        <button onclick="appendDecimal()">.</button>
+        <button class="clear" onclick="clearDisplay()">C</button>
+        <button class="operator" onclick="handleOperator('+')">+</button>
+        <button class="equals" onclick="calculate()">=</button>
+      </div>
+
+      <div class="ai-features">
+        <h3>AI Features:</h3>
+        <ul>
+          <li>Natural language input above</li>
+          <li>Voice commands available</li>
+          <li>Smart suggestions after calculations</li>
+        </ul>
+      </div>
+    </div>
+
+    <button class="voice-input" onclick="toggleVoiceInput()">
+      <i class="fas fa-microphone"></i>
+      Voice Input
+    </button>
+
+    <div id="historyPanel">
+      <h2>Calculation History</h2>
+      <div id="historyList"></div>
+    </div>
+
+    <script src="https://kit.fontawesome.com/your-font-awesome-kit.js"></script>
+    <script>
+      let currentInput = "0";
+      let previousInput = "";
+      let operation = null;
+      let memory = 0;
+      let lastAnswer = 0;
+      let isRecording = false;
+      let recognition;
+
+      // Initialize speech recognition
+      if ("webkitSpeechRecognition" in window) {
+        recognition = new webkitSpeechRecognition();
+        recognition.continuous = false;
+        recognition.interimResults = false;
+
+        recognition.onresult = function (event) {
+          const text = event.results[0][0].transcript;
+          processVoiceInput(text);
+        };
+
+        recognition.onend = function () {
+          isRecording = false;
+          document.querySelector(".voice-input").classList.remove("recording");
+        };
+      }
+
+      // Add event listener when the document loads
+      document.addEventListener("DOMContentLoaded", function () {
+        // Add click event listener to the document
+        document.addEventListener("click", function (event) {
+          const historyPanel = document.getElementById("historyPanel");
+          const historyButton = document.querySelector(
+            'button[onclick="toggleHistory()"]'
+          );
+
+          // If the click is outside the history panel AND outside the history button
+          // AND the panel is currently open, then close it
+          if (
+            !historyPanel.contains(event.target) &&
+            !historyButton.contains(event.target) &&
+            historyPanel.classList.contains("active")
+          ) {
+            historyPanel.classList.remove("active");
+          }
+        });
+      });
+
+      function updateDisplay() {
+        document.getElementById("current").textContent = currentInput;
+        document.getElementById("history").textContent = previousInput;
+      }
+
+      function appendNumber(number) {
+        if (currentInput === "0") {
+          currentInput = number.toString();
+        } else {
+          currentInput += number.toString();
+        }
+        updateDisplay();
+      }
+
+      function appendDecimal() {
+        if (!currentInput.includes(".")) {
+          currentInput += ".";
+          updateDisplay();
+        }
+      }
+
+      function clearDisplay() {
+        currentInput = "0";
+        previousInput = "";
+        operation = null;
+        updateDisplay();
+      }
+
+      function handleOperator(op) {
+        if (operation !== null) {
+          calculate();
+        }
+        previousInput = currentInput + " " + op;
+        operation = op;
+        currentInput = "0";
+        updateDisplay();
+      }
+
+      function handleMemory(action) {
+        fetch("/memory", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            action: action,
+            value: parseFloat(currentInput),
+          }),
+        })
+          .then((response) => response.json())
+          .then((data) => {
+            if (data.result !== undefined) {
+              currentInput = data.result.toString();
+              updateDisplay();
+            }
+          });
+      }
+
+      function handleFunction(func) {
+        fetch("/calculate", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            function: func,
+            value: parseFloat(currentInput),
+          }),
+        })
+          .then((response) => response.json())
+          .then((data) => {
+            currentInput = data.result.toString();
+            updateDisplay();
+            updateHistory(data.history);
+          });
+      }
+
+      function calculate() {
+        if (operation === null) return;
+
+        fetch("/calculate", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            operation: operation,
+            num1: parseFloat(previousInput),
+            num2: parseFloat(currentInput),
+          }),
+        })
+          .then((response) => response.json())
+          .then((data) => {
+            currentInput = data.result.toString();
+            previousInput = "";
+            operation = null;
+            updateDisplay();
+            updateHistory(data.history);
+          });
+      }
+
+      function updateHistory(history) {
+        const historyList = document.getElementById("historyList");
+        historyList.innerHTML = "";
+        history.forEach((entry) => {
+          const div = document.createElement("div");
+          div.className = "history-entry";
+          div.textContent = `${entry.operation}: ${entry.inputs} = ${entry.result}`;
+          historyList.appendChild(div);
+        });
+      }
+
+      function toggleHistory() {
+        const panel = document.getElementById("historyPanel");
+        panel.classList.toggle("active");
+        fetch("/history")
+          .then((response) => response.json())
+          .then((data) => updateHistory(data.history));
+      }
+
+      function toggleVoiceInput() {
+        if (!recognition) {
+          alert("Speech recognition is not supported in your browser.");
+          return;
+        }
+
+        if (!isRecording) {
+          recognition.start();
+          isRecording = true;
+          document.querySelector(".voice-input").classList.add("recording");
+        } else {
+          recognition.stop();
+          isRecording = false;
+          document.querySelector(".voice-input").classList.remove("recording");
+        }
+      }
+
+      function processVoiceInput(text) {
+        fetch("/process_voice", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ text: text }),
+        })
+          .then((response) => response.json())
+          .then((data) => {
+            if (data.expression) {
+              currentInput = data.expression;
+              updateDisplay();
+              calculate();
+            }
+          });
+      }
+
+      function handleNaturalLanguage(event) {
+        if (event.key === "Enter") {
+          const query = document.getElementById("naturalInput").value;
+          const input = document.getElementById("naturalInput");
+          input.disabled = true; // Disable input while processing
+
+          fetch("/calculate", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              natural_language: query,
+            }),
+          })
+            .then((response) => response.json())
+            .then((data) => {
+              input.disabled = false; // Re-enable input
+              if (data.error) {
+                // Show error in the current display
+                currentInput = "Error: " + data.error;
+                updateDisplay();
+                return;
+              }
+              if (data.result !== undefined) {
+                // Show the expression and result
+                previousInput = `${query} → ${data.expression}`;
+                currentInput = data.result.toString();
+                updateDisplay();
+                updateHistory(data.history);
+                input.value = "";
+
+                if (data.suggestion) {
+                  showSuggestion(data.suggestion);
+                }
+              }
+            })
+            .catch((error) => {
+              input.disabled = false; // Re-enable input
+              currentInput = "Error: Could not process request";
+              updateDisplay();
+              console.error("Error:", error);
+            });
+        }
+      }
+
+      function showSuggestion(suggestion) {
+        const suggestionDiv = document.getElementById("suggestion");
+        suggestionDiv.textContent = `Suggestion: ${suggestion}`;
+        suggestionDiv.style.display = "block";
+      }
+
+      function applySuggestion() {
+        const suggestion = document
+          .getElementById("suggestion")
+          .textContent.replace("Suggestion: ", "");
+        document.getElementById("naturalInput").value = suggestion;
+        handleNaturalLanguage({ key: "Enter" });
+      }
+    </script>
+  </body>
+</html>
